@@ -9,20 +9,17 @@
 
 asmlinkage int sys_my_xtime(struct timespec *current_time)
 {
-
 	
 	struct timespec *current_time_k;
 	long ret;
 	current_time_k = (struct timespec*)kmalloc(sizeof(struct timespec), GFP_KERNEL);
 
-
-	*current_time_k = current_kernel_time();	
-	
-
 	if(!current_time_k)
 	{
 		return -1;
 	}
+
+	*current_time_k = current_kernel_time();	
 
 	ret = copy_to_user(current_time, current_time_k, sizeof(struct timespec));
 
