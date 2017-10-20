@@ -15,11 +15,6 @@ asmlinkage int sys_my_xtime(struct timespec *current_time)
 	long ret;
 	current_time_k = (struct timespec*)kmalloc(sizeof(struct timespec), GFP_KERNEL);
 
-        if(!access_ok(VERIFY_WRITE, current_time, sizeof(struct timespec)))
-        {
-                printk(KERN_ALERT "Memory not writable\n");
-                return EFAULT;
-        }
 
 	if(!current_time_k)
 	{
@@ -35,7 +30,7 @@ asmlinkage int sys_my_xtime(struct timespec *current_time)
 	{	
 		printk(KERN_ALERT "Error copying memory\n");
 		kfree(current_time_k);
-		return -2;
+		return EFAULT;
 	}
 	else
 	{
