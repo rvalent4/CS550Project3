@@ -54,7 +54,10 @@ static ssize_t temp_read(struct file *f, char *buf, size_t q, loff_t * s)
 	}
 
 	current_time_k = current_kernel_time();
-        sprintf(kbuf, "%lu %lu ", current_time_k.tv_sec, current_time_k.tv_nsec);
+        if(sprintf(kbuf, "%lu %lu ", current_time_k.tv_sec, current_time_k.tv_nsec) < 0)
+	{
+		printk(KERN_ALERT "Error calling sprintf\n");
+	}
 	printk(KERN_ALERT "mytime.ko: %s   size is:%lu\n", kbuf, strlen(kbuf));
         ret = copy_to_user(buf, kbuf, strlen(kbuf));
 	
