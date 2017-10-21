@@ -4,6 +4,7 @@
 #include <linux/fs.h> 
 #include <linux/miscdevice.h>
 #include <linux/time.h>
+#include <linux/string.h>
 #include <linux/slab.h>
 MODULE_LICENSE("GPL"); // called when module is installed
 
@@ -41,10 +42,18 @@ static ssize_t temp_read(struct file *f, char *buf, size_t q, loff_t * s)
 	long ret;
 	struct timespec current_time_k;
 	char* kbuf = (char*)kmalloc(sizeof(char)*q, GFP_KERNEL);
+	
+	if(!kbuf)
+	{
+		printk(KERN_ALERT "Error kmallocing buf\n");
+		return -1;
+	}
+
 	current_time_k = current_kernel_time();
         sprintf(kbuf, "%lu %lu ", current_time_k.tv_sec, current_time_k.tv_nsec);
-        ret = copy_to_user(buf, kbuf, sizeof(kbuf));
-
+	printk(KERN_ALERT "mytime.ko: %s   size is:%lu\n", kbuf, strlen(kbuf));
+        ret = copy_to_user(buf, kbuf, strlen(kbuf));
+	
         if(ret != 0)
         {
                 printk(KERN_ALERT "Error copying memory\n");
