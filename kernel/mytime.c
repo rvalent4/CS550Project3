@@ -25,15 +25,19 @@ static struct miscdevice my_misc_device = {
 int __init mytime_init(void)
 {
 	int result = register_chrdev(70, "mytime", &my_fops);
-	misc_register(&my_misc_device);
-	printk(KERN_ALERT "mymodule: Hello World!\n");
+	int result2 = misc_register(&my_misc_device);
+	if(result < 0 || result2 < 0)
+	{
+		printk(KERN_ALERT "mytime: error registering device \n");
+	}
+	
+	printk(KERN_ALERT "mytime: initalizing mytime module!\n");
 	return 0; 
 }
-// called when module is removed 
 void __exit mytime_exit(void)
 {
 	misc_deregister(&my_misc_device);
-	printk(KERN_ALERT "mymodule: Goodbye, cruel world!!\n"); 
+	printk(KERN_ALERT "mytime: removing mytime module!\n"); 
 }
 
 
@@ -65,9 +69,6 @@ static ssize_t temp_read(struct file *f, char *buf, size_t q, loff_t * s)
                 kfree(kbuf);
                 return 0;
         }	
-
-
-return 29;
 }
 
 module_init(mytime_init); 
