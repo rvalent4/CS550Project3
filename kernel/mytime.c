@@ -7,18 +7,17 @@
 #include <linux/slab.h>
 MODULE_LICENSE("GPL"); // called when module is installed
 
-static  ssize_t my_read(char* buf);
-
+static ssize_t temp_read(struct file *, char *, size_t, loff_t *);
 
 static struct file_operations my_fops = {
 	.owner = THIS_MODULE,
-        .read = my_read
+        .read = temp_read
 };
 
 
 static struct miscdevice my_misc_device = { 
 	.minor = MISC_DYNAMIC_MINOR, 
-	.name = "my device",
+	.name = "mytime",
 	.fops = &my_fops
 };
 
@@ -36,42 +35,31 @@ void __exit mytime_exit(void)
 	printk(KERN_ALERT "mymodule: Goodbye, cruel world!!\n"); 
 }
 
-static ssize_t my_read(char* buf)
+
+static ssize_t temp_read(struct file *f, char *buf, size_t q, loff_t * s)
 {
 	long ret;
-	char* kbuf = (char*)kmalloc(sizeof(char)*1000, GFP_KERNEL);
-	struct timespec *current_time_k;
-	current_time_k = (struct timespec*)kmalloc(sizeof(struct timespec), GFP_KERNEL);
-	if(!current_time_k)
-	{
-		return -1;
-	}
+	struct timespec current_time_k;
+	char* kbuf = (char*)kmalloc(sizeof(char)*q, GFP_KERNEL);
+	current_time_k = current_kernel_time();
+        sprintf(kbuf, "%lu %lu ", current_time_k.tv_sec, current_time_k.tv_nsec);
+        ret = copy_to_user(buf, kbuf, sizeof(kbuf));
+
+        if(ret != 0)
+        {
+                printk(KERN_ALERT "Error copying memory\n");
+                kfree(kbuf);
+                return EFAULT;
+        }
+        else
+        {
+                kfree(kbuf);
+                return 0;
+        }	
 
 
-	*current_time_k = current_kernel_time();	
-	sprintf(kbuf, "%lu %lu \0", current_time_k->tv_sec, current_time_k->tv_nsec);
-	ret = copy_to_user(buf, kbuf, sizeof(kbuf));
-
-	if(ret != 0)
-	{	
-		printk(KERN_ALERT "Error copying memory\n");
-		kfree(current_time_k);
-		kfree(kbuf);
-		return EFAULT;
-	}
-	else
-	{
-		kfree(current_time_k);
-		kfree(kbuf);
-		return 0;
-	}
-	
-	kfree(current_time_k);
-	kfree(kbuf);	
-	printk(KERN_ALERT "my_read() called\n");
-	return 0;
+return 29;
 }
-
 
 module_init(mytime_init); 
 module_exit(mytime_exit);
