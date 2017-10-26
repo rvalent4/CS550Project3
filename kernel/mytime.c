@@ -16,17 +16,11 @@ static struct file_operations my_fops = {
 };
 
 
-static struct miscdevice my_misc_device = { 
-	.minor = MISC_DYNAMIC_MINOR, 
-	.name = "mytime",
-	.fops = &my_fops
-};
 
 int __init mytime_init(void)
 {
 	int result = register_chrdev(70, "mytime", &my_fops);
-	int result2 = misc_register(&my_misc_device);
-	if(result < 0 || result2 < 0)
+	if(result < 0)
 	{
 		printk(KERN_ALERT "mytime: error registering device \n");
 	}
@@ -36,7 +30,7 @@ int __init mytime_init(void)
 }
 void __exit mytime_exit(void)
 {
-	misc_deregister(&my_misc_device);
+	unregister_chrdev(70, "mytime");
 	printk(KERN_ALERT "mytime: removing mytime module!\n"); 
 }
 
