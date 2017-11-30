@@ -15,13 +15,18 @@ MODULE_LICENSE("GPL");
 //insmod numpipe.o N=10
 
 int N = 0;
+
+static DEFINE_SEMAPHORE(full);
+static DEFINE_SEMAPHORE(empty);
+static DEFINE_MUTEX(mutex);
+
 module_param(N, int, S_IRUGO);
 
 static ssize_t temp_read(struct file *, char *, size_t, loff_t *);
 static ssize_t temp_write(struct file *, const char *, size_t, loff_t *);
 
 static struct file_operations my_fops = {
-		.owner = THIS_MODULE,
+	.owner = THIS_MODULE,
         .read = temp_read,
         .write = temp_write
 };
@@ -35,6 +40,11 @@ struct miscdevice numpipe = {
 int __init numpipe_init(void)
 {
 	int result = misc_register(&numpipe);
+
+	sema_init(&full, 0);
+	sema_init(&empty, N);
+	mutex_init(&mutex);
+
 	if(result < 0)
 	{
 		printk(KERN_ALERT "numpipe: error registering misc device \n");
