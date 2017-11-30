@@ -15,10 +15,15 @@ MODULE_LICENSE("GPL");
 //insmod numpipe.o N=10
 
 int N = 0;
+char* kbuf;
+int start = 0;
+int end = 0;
+
+
 
 static DEFINE_SEMAPHORE(full);
 static DEFINE_SEMAPHORE(empty);
-static DEFINE_MUTEX(mutex);
+static DEFINE_SEMAPHORE(mutex);
 
 module_param(N, int, S_IRUGO);
 
@@ -40,10 +45,19 @@ struct miscdevice numpipe = {
 int __init numpipe_init(void)
 {
 	int result = misc_register(&numpipe);
+	kbuf = (char*)kmalloc(sizeof(int)*N, GFP_KERNEL);
+	
+	if(!kbuf)
+	{
+		printk(KERN_ALERT "Error kmallocing buf\n");
+		return -1;
+	}
+
+
 
 	sema_init(&full, 0);
 	sema_init(&empty, N);
-	mutex_init(&mutex);
+	sema_init(&mutex,1);
 
 	if(result < 0)
 	{
@@ -57,6 +71,7 @@ int __init numpipe_init(void)
 
 void __exit numpipe_exit(void)
 {
+        kfree(kbuf);
 	misc_deregister(&numpipe);
 	printk(KERN_ALERT "numpipe: removing numpipe module!\n"); 
 }
@@ -64,16 +79,34 @@ void __exit numpipe_exit(void)
 
 static ssize_t temp_read(struct file *f, char *buf, size_t q, loff_t * s)
 {
-
-		printk(KERN_ALERT "You called read\n");
+		if(down_interruptible(&full))
+			return -1;
+		if(down_interruptible(&mutex))
+		{
+			up(&full);
+			return -1;
+		}
+		printk(KERN_ALERT "You would have consumed\n");
+		up(&mutex);
+		up(&empty);
 		return 0;
 
 }
 
 static ssize_t temp_write(struct file *f, const char *buf, size_t q, loff_t * s)
 {
-		printk(KERN_ALERT "You called write\n");
+		if(down_interruptible(&empty))
+			return -1;
+		if(down_interruptible(&mutex))
+		{
+			up(&empty);
+			return -1;
+		}
+		printk(KERN_ALERT "You would have produced\n");
+		up(&mutex);
+		up(&full);
 		return 0;
+
 }
 
 
