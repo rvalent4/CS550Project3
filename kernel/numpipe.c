@@ -18,7 +18,7 @@ int N = 0;
 char* kbuf;
 int start = 0;
 int end = 0;
-
+int size = 0;
 
 
 static DEFINE_SEMAPHORE(full);
@@ -79,6 +79,10 @@ void __exit numpipe_exit(void)
 
 static ssize_t temp_read(struct file *f, char *buf, size_t q, loff_t * s)
 {
+		int ret;
+		if(q != sizeof(int))
+			return -2;
+
 		if(down_interruptible(&full))
 			return -1;
 		if(down_interruptible(&mutex))
@@ -86,7 +90,20 @@ static ssize_t temp_read(struct file *f, char *buf, size_t q, loff_t * s)
 			up(&full);
 			return -1;
 		}
-		printk(KERN_ALERT "You would have consumed\n");
+
+		if(size != 0)
+		{
+			ret = copy_to_user(buf, &kbuf[start%N], sizeof(int));
+			if(ret != 0)
+			{
+				printk(KERN_ALERT "error copying memory\n");
+				up(&mutex);
+				up(&full);
+				return EFAULT;
+			}		
+			start = start + 1;
+			size = size -1;
+		}
 		up(&mutex);
 		up(&empty);
 		return 0;
@@ -95,6 +112,9 @@ static ssize_t temp_read(struct file *f, char *buf, size_t q, loff_t * s)
 
 static ssize_t temp_write(struct file *f, const char *buf, size_t q, loff_t * s)
 {
+		int ret;
+		if(q != sizeof(int))
+			return -2;
 		if(down_interruptible(&empty))
 			return -1;
 		if(down_interruptible(&mutex))
@@ -102,7 +122,20 @@ static ssize_t temp_write(struct file *f, const char *buf, size_t q, loff_t * s)
 			up(&empty);
 			return -1;
 		}
-		printk(KERN_ALERT "You would have produced\n");
+		if(size != N)
+		{
+			ret = copy_from_user(&kbuf[end%N],buf, sizeof(int));
+			if(ret !=0)
+			{
+				printk(KERN_ALERT "error copying memory\n");
+				up(&mutex);
+				up(&empty);
+				return EFAULT;
+			}
+			printk(KERN_ALERT "Kernel recieved number %d\n", kbuf[end%N]); 
+			end = end+1;
+			size = size + 1;
+		}
 		up(&mutex);
 		up(&full);
 		return 0;
