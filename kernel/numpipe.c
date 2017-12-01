@@ -14,11 +14,11 @@ MODULE_LICENSE("GPL");
 
 //insmod numpipe.o N=10
 
-int N = 0;
-char* kbuf;
-int start = 0;
-int end = 0;
-int size = 0;
+static int N = 0;
+static char* kbuf;
+static int start = 0;
+static int end = 0;
+static int size = 0;
 
 
 static DEFINE_SEMAPHORE(full);
@@ -91,9 +91,9 @@ static ssize_t temp_read(struct file *f, char *buf, size_t q, loff_t * s)
 			return -1;
 		}
 
-		if(size != 0)
+		if(size > 0)
 		{
-			ret = copy_to_user(buf, &kbuf[start%N], sizeof(int));
+			ret = copy_to_user(buf, &kbuf[(start%N)*q], sizeof(int));
 			if(ret != 0)
 			{
 				printk(KERN_ALERT "error copying memory\n");
@@ -106,7 +106,7 @@ static ssize_t temp_read(struct file *f, char *buf, size_t q, loff_t * s)
 		}
 		up(&mutex);
 		up(&empty);
-		return 0;
+		return q;
 
 }
 
@@ -122,9 +122,9 @@ static ssize_t temp_write(struct file *f, const char *buf, size_t q, loff_t * s)
 			up(&empty);
 			return -1;
 		}
-		if(size != N)
+		if(size < N)
 		{
-			ret = copy_from_user(&kbuf[end%N],buf, sizeof(int));
+			ret = copy_from_user(&kbuf[(end%N)*q],buf, q);
 			if(ret !=0)
 			{
 				printk(KERN_ALERT "error copying memory\n");
@@ -132,13 +132,12 @@ static ssize_t temp_write(struct file *f, const char *buf, size_t q, loff_t * s)
 				up(&empty);
 				return EFAULT;
 			}
-			printk(KERN_ALERT "Kernel recieved number %d\n", kbuf[end%N]); 
 			end = end+1;
 			size = size + 1;
 		}
 		up(&mutex);
 		up(&full);
-		return 0;
+		return q;
 
 }
 
